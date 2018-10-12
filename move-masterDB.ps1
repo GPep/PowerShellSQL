@@ -1,7 +1,7 @@
 ﻿Function change-masterConfig
 {
 
-<#These functions moves the Master Database, log file and error log to a new location
+<#These functions move the Master Database, log file and error log to a new location
 
 It will first change the startup parameters (change-MasterConfig), then stop services, move the master data and log files to their 
 new location and then start services again (move-master).
