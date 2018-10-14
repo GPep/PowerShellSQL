@@ -22,13 +22,19 @@
 
 		    else
 			{
-            $version = $srv.Version
+            write-host $srv.Version
+            $major = $srv.Version.Major
+            $minor = $srv.version.minor
+            $build = $srv.version.build
+            $version = "$major.$minor.$build"
             return $version
+
 			}
 		}
 		catch
 		{
 			Write-Error -Message $_.Exception.Message
 		}
+
 	}
 }
