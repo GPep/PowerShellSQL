@@ -22,7 +22,6 @@
 
 		    else
 			{
-            write-host $srv.Version
             $major = $srv.Version.Major
             $minor = $srv.version.minor
             $build = $srv.version.build
