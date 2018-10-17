@@ -8,8 +8,10 @@
 	
     The main source of inspiration for this came from Adam Bertram and this blog post:
     https://4sysops.com/archives/update-multiple-sql-server-systems-with-powershell/
-    My version is a lot more simple (but quite as robust!) to Adam's although I hope to improve this over time as my PowerShell
+    My version is a lot more simple (but not quite as robust!) to Adam's although I hope to improve this over time as my PowerShell
     skills improve. 
+    I have used the same premise as him with the folder structure, naming conventions and CSV reference file. 
+
     For now this version will only update one Server at a time but a future revision will allow for multiple server updates.
 
     ****PLEASE TEST THIS BEFORE RUNNING IT ON ONE OF YOUR PRODUCTION ENVIRONMENTS!!!!!****
@@ -44,7 +46,7 @@
 
         This will need to be periodaically updated when new SPs and CUs are released and you will need to download new SPs and CUs as they are released.
 
-        An Example of the CSV file can be found at http:\\github\GPep\Update-SQLServer
+        An Example of the CSV file can be found at https://github.com/GPep/PowerShellSQL/tree/master/Patching
         Alternatively if using a Central Management Server, you could load these details into a table to be queried.
 
 
