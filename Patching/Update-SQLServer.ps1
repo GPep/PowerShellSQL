@@ -1,6 +1,60 @@
 ﻿Function Update-SQLServer
-
 {
+<#
+	.SYNOPSIS
+		This function attempts updates a server with the latest Service Pack and/or CU for SQL versions 2005-2016 (if required). 
+        It will first check the current version, then check the latest version (information held in a .CSV file) 
+        before copying the files to the server and attempting to install them.
+	
+    The main source of inspiration for this came from Adam Bertram and this blog post:
+    https://4sysops.com/archives/update-multiple-sql-server-systems-with-powershell/
+    My version is a lot more simple (but quite as robust!) to Adam's although I hope to improve this over time as my PowerShell
+    skills improve. 
+    For now this version will only update one Server at a time but a future revision will allow for multiple server updates.
+
+    ****PLEASE TEST THIS BEFORE RUNNING IT ON ONE OF YOUR PRODUCTION ENVIRONMENTS!!!!!****
+
+	.EXAMPLE
+		PS> Update-SQLServerk -ComputerName SERVER1 -Source '\\UNCPath\SQLInstallers\SQL' -Credential 'ServerAdmin
+	
+		This example attempts to to install any updates for SERVER1 using the credential 'ServerAdmin'.
+        the Source files for the SQL updates are stored in \\UNCPath\SQLInstallers\SQL
+        The pre-requisites for this automated patch updates to work are the following
+
+
+     .Pre-Requisites
+     
+        ********IMPORTANT********
+
+        1) All your installaters should be sorted in folders called '2005, 2008, 2008R2, 2012, 2014, 2016' containing an extra folder 
+        called 'Updates' which holds all of your SPs and CU. 
+
+
+        2) The SPs and CUs must be renamed so that that use the following naming convention
+
+        SQLServerXXXX-SPX-CUX-x64.exe
+
+        example for SQL Server 2012 SP2 CU3
+        SQLServer2012-SP2-CU3-X64.exe
+
+        3) You must also have a .CSV file at the top of your Source folder called 'SQLServerVersions.csv' with all your SPs and CUs listed. 
+        They should have the following columns:
+
+        FullVersion, Year, ServicePack, CumulativeUpdate
+
+        This will need to be periodaically updated when new SPs and CUs are released and you will need to download new SPs and CUs as they are released.
+
+        An Example of the CSV file can be found at http:\\github\GPep\Update-SQLServer
+        Alternatively if using a Central Management Server, you could load these details into a table to be queried.
+
+
+        The following webpage can be used to keep track of any new SP or CU releases.
+        https://buildnumbers.wordpress.com/sqlserver/
+      
+	
+#>
+
+
 	[CmdletBinding()]
 	param
 	(
@@ -9,13 +63,22 @@
 		[string]$ComputerName,
         [Parameter(Mandatory=$False)]
         [ValidateNotNullOrEmpty()]
-		[string]$Source = "\\bhf-storage02\ServerTeam\ISOs Installs and Service Packs\SQL"
-
+		[string]$Source = "\\bhf-storage02\ServerTeam\ISOs Installs and Service Packs\SQL",
+        [Parameter()]
+        [validateNotNullOrEmpty()]
+        [String]$credential ="$env:USERDOMAIN\$env:UserName"
     )
 	process {
 		try
 		{
-	
+	    
+        IF (!(Get-Module -Name pendingreboot))
+    {
+        Write-Host 'Loading pendingreboot Module' -ForegroundColor DarkYellow
+        Push-Location
+        Import-Module pendingreboot -DisableNameChecking
+        Pop-Location
+    }
 
         #Get Current SQL Version for instance
 
@@ -30,7 +93,6 @@
         if($minor -ne '00' -and $major -eq '10')
         {
         $SQLVersion = $SQLVersion+"R2"
-        write-host $SQLVersion
         }
 
  
@@ -41,11 +103,7 @@
         write-host "The latest service pack is" $getlatestVersion.servicePack
 
 
-
-
-        write-host "The Current Service Pack is:" $currentSP
-
-        If ($CurrentVersion.split('.')[2] -eq $getlatestVersion.FUllVersion.split('.')[2])
+        If ($CurrentVersion.split('.')[2] -eq $getlatestVersion.FUllVersion.split('.')[2] -or $CurrentVersion.split('.')[2] -gt $getlatestVersion.FUllVersion.split('.')[2] )
         {
 
         write-host 'Current SPs and CUs are up to date'
@@ -55,11 +113,8 @@
         else
         {
 
-        write-host $build
         $latestBuild = $getlatestVersion.FUllVersion.split('.')[2]
 
-        write-host $build.substring(0,1)
-        write-host $latestbuild.substring(0,1)
 
         $SPrequired = $true
 
@@ -74,7 +129,7 @@
         write-host 'SQL Server Requires Updating with'
         $spName = Find-SqlSP -SqlServerVersion $SQLVersion -source $source
 
-        write-host $spName
+
 
 
         IF ($getLatestversion.CumulativeUpdate -ne '')
@@ -92,27 +147,41 @@
 
         
         #Test if Reboot required before starting updates.
-        $rebootFirst = Test-PendingReboot $ComputerName
-        if ($rebootfirst -eq $true){
+
+        #strip away instance name if this is a named instance
+        
+        $ServerName = $ComputerName.Split('\')[0]
+        $rebootFirst = Test-PendingReboot $serverName
+
+        if ($rebootfirst.isrebootPending -eq $true){
         Write-Host "$ComputerName Needs rebooting first before patches can be appied"
+        return
         }
 
         else {
 
 
-        write-host "lets update this motherfucker"
+        write-host "Preparing to update $ComputerName"
         
         If ($sprequired -eq $true)
         {
         #Update SP (if required)
-        write-host "service pack required"
+        $SPInstaller = "$source\$SQLVersion"+"\Updates\$spName"
+        write-host $SPInstaller
+
+
+        Install-SqlSP -ComputerName $ComputerName -installer $spInstaller -spName $SPname -restart $true -credential $credential
+
         }
         
         if ($cu -eq $true)
         {
-        #Update CU (if required)
 
-        write-host "CU pack required"
+        $CUInstaller = "$source\$SQLVersion"+"\Updates\$CUName"
+
+        #Update CU (if required)
+        Install-SqlCU -ComputerName $ComputerName -installer $CUInstaller -spName $CUname -restart $true -credential $credential
+
         }
 
         }
@@ -125,6 +194,13 @@
 
         {
         Write-Error -Message $_.Exception.Message
+
+        }
+
+        Finally
+
+        {
+         write-host "SQL Server Patch and CU update completed"
 
         }
 
@@ -325,42 +401,145 @@ function Find-SqlCU
 }
 
 
-function Test-PendingReboot
+function Install-SqlSP
 {
-	<#
 
-	#>
-    [OutputType([bool])]
-	[CmdletBinding()]
+
 	param
 	(
 		[Parameter(Mandatory)]
 		[ValidateNotNullOrEmpty()]
-		[string]$ComputerName
-		
+		[string]$ComputerName,
+
+		[Parameter()]
+		[ValidateNotNullOrEmpty()]
+		[string]$installer,
+
+        [Parameter()]
+        [validateNotNullOrEmpty()]
+        [String]$spName,
+
+        [Parameter()]
+        [validateNotNullOrEmpty()]
+        [String]$credential,
+
+        [Parameter()]
+        [validateNotNullOrEmpty()]
+        [bool]$restart
+
 	)
-	process {
-    
-    #strip away instance name if this is a named instance
-    $ServerName = $ComputerName.Split('\')[0]
+	process
+	{
+		try
+		{
 
-    IF (Invoke-Command -ComputerName $serverName -ea 0 -ScriptBlock { Get-ItemProperty "HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager" -Name PendingFileRenameOperations -EA Ignore } ) { return $true }
-    IF (Invoke-Command -ComputerName $serverName -ea 0 -ScriptBlock { Get-Item "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpdate\Auto Update\RebootRequired"}) { return $true }
-    IF (Invoke-Command -ComputerName $serverName -ea 0 -ScriptBlock { Get-ChildItem "HKLM:\Software\Microsoft\Windows\CurrentVersion\Component Based Servicing\RebootPending"}) { return $true }
+            write-host "copying SP to $computerName"
+            #extract SP to server
+			$spExtractPath = "C:\windows\Temp\$spName"
+      
+            $targetSession = New-PSSession -ComputerName $Computername -Credential $credential
+            Copy-Item -tosession $targetSession –Path "$Installer" -Destination "$spExtractPath" -recurse -Force -PassThru -Verbose 
+            
 
-    try { 
-        $util = [wmiclass]"\\.\root\ccm\clientsdk:CCM_ClientUtilities"
-        $status = $util.DetermineIfRebootPending()
-        if(($status -ne $null) -and $status.RebootPending){
-        return $true
-        } 
- 
+            #invoke-command -ComputerName $ComputerName -Credential $credential -ScriptBlock{ Copy-Item –Path "$Using:Installer" -Destination "$using:spExtractPath" -Force -PassThru -Verbose}
 
-	    }
+			## Install the SP
+            $argumentsList = '/q /allinstances'
+			
+            Invoke-Command -Session $targetsession -ScriptBlock {& cmd.exe /C "$using:SpExtractPath /q /allinstances /IAcceptSQLServerLicenseTerms"} -Verbose
+			
+
+            remove-psSession $targetSession
+            
+            if ($restart -eq $true)
+            {
+            
+            Restart-Computer $ComputerName -Wait -Force
+
+            }
+        
+		}
 		catch
 		{
-		    Write-Error -Message $_.Exception.Message
+			Write-Error -Message $_.Exception.Message
 		}
-        return $false
-	}
+		finally
+		{
+				## Cleanup the extracted SP
+				Remove-Item -Path "\\$computerName\C$\temp\$spName" -Recurse -Force -ErrorAction SilentlyContinue
+                
+		}
+		}
+}
+
+
+function Install-SqlCU
+{
+
+
+	param
+	(
+		[Parameter(Mandatory)]
+		[ValidateNotNullOrEmpty()]
+		[string]$ComputerName,
+
+		[Parameter()]
+		[ValidateNotNullOrEmpty()]
+		[string]$installer,
+
+        [Parameter()]
+        [validateNotNullOrEmpty()]
+        [String]$CUName,
+
+        [Parameter()]
+        [validateNotNullOrEmpty()]
+        [String]$credential,
+
+        [Parameter()]
+        [validateNotNullOrEmpty()]
+        [bool]$restart
+
+	)
+	process
+	{
+		try
+		{
+
+            write-host "copying CU to $computerName"
+            #extract SP to server
+			$CUExtractPath = "C:\windows\Temp\$spName"
+      
+            $targetSession = New-PSSession -ComputerName $Computername -Credential $credential
+            Copy-Item -tosession $targetSession –Path "$Installer" -Destination "$CUExtractPath" -recurse -Force -PassThru -Verbose 
+            
+
+            #invoke-command -ComputerName $ComputerName -Credential $credential -ScriptBlock{ Copy-Item –Path "$Using:Installer" -Destination "$using:spExtractPath" -Force -PassThru -Verbose}
+
+			## Install the SP
+            $argumentsList = '/q /allinstances'
+			
+            Invoke-Command -Session $targetsession -ScriptBlock {& cmd.exe /C "$using:CUExtractPath /q /allinstances /IAcceptSQLServerLicenseTerms"} -Verbose
+			
+
+            remove-psSession $targetSession
+            
+            if ($restart -eq $true)
+            {
+            
+            Restart-Computer $ComputerName -Wait -Force
+
+            }
+        
+		}
+		catch
+		{
+			Write-Error -Message $_.Exception.Message
+		}
+		finally
+		{
+				## Cleanup the extracted SP
+				Remove-Item -Path "\\$computerName\C$\temp\$CUName" -Recurse -Force -ErrorAction SilentlyContinue
+                
+		}
+		}
 }

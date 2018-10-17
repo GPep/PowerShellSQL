@@ -282,36 +282,3 @@ Function start-SQLInstall
     }
 
 }
-<#
-        Script InstallSQLServer
-        {
-            GetScript =
-            {
-                $sqlInstances = gwmi win32_service -computerName localhost | ? { $_.Name -match "mssql*" -and $_.PathName -match "sqlservr.exe" } | % { $_.Caption }
-                $res = $sqlInstances -ne $null -and $sqlInstances -gt 0
-                $vals = @{
-                    Installed = $res;
-                    InstanceCount = $sqlInstances.count
-                }
-                $vals
-            }
-            SetScript =
-            {
-
-                
-            }
-            TestScript =
-            {
-                $sqlInstances = gwmi win32_service -computerName localhost | ? { $_.Name -match "mssql*" -and $_.PathName -match "sqlservr.exe" } | % { $_.Caption }
-                $res = $sqlInstances -ne $null -and $sqlInstances -gt 0
-                if ($res) {
-                    Write-Verbose "SQL Server is already installed"
-                } else {
-                    Write-Verbose "SQL Server is not installed"
-                }
-                $res
-            }
-        }
-
-
-        #>
