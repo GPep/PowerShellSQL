@@ -75,7 +75,7 @@
 		[string]$Source = "\\bhf-storage02\ServerTeam\ISOs Installs and Service Packs\SQL",
         [Parameter(mandatory=$false)]
         [validateNotNullOrEmpty()]
-        [String]$credential ="$env:USERDOMAIN\$env:UserName"
+        [pscredential]$credential ="$env:USERDOMAIN\$env:UserName"
     )
 	process {
 		try
@@ -88,6 +88,7 @@
         Import-Module pendingreboot -DisableNameChecking
         Pop-Location
     }
+
 
         #Get Current SQL Version for instance
 
@@ -134,12 +135,14 @@
         if ($build.substring(0,1) -eq $latestBuild.substring(0,1))
         {
         $SPrequired = $false
+        write-host "Service Packs are up to date"
         }
 
 
         #get installers for SP and CUs - This gets the  name of the installer from your 'Updates' folder.
 
         write-host 'SQL Server Requires Updating with'
+
         $spName = Find-SqlSP -SqlServerVersion $SQLVersion -source $source
 
         #This checks as to whether a CU needs to be installed and if so, confirms which one.
@@ -482,7 +485,7 @@ function Install-SqlSP
 
         [Parameter()]
         [validateNotNullOrEmpty()]
-        [String]$credential,
+        [pscredential]$credential,
 
         [Parameter()]
         [validateNotNullOrEmpty()]
@@ -499,7 +502,10 @@ function Install-SqlSP
 			$spExtractPath = "C:\windows\Temp\$spName"
       
             $targetSession = New-PSSession -ComputerName $Computername -Credential $credential
-            Copy-Item -tosession $targetSession –Path "$Installer" -Destination "$spExtractPath" -recurse -Force -PassThru -Verbose 
+            #Copy-Item -tosession $targetSession –Path "$Installer" -Destination "$spExtractPath" -Force -PassThru -Verbose 
+
+
+            Invoke-command -session $targetSession -ScriptBlock { copy-item -Path $using:Installer -Destination $using:SPExtractPath -Force -PassThru -Verbose }
             
 
             ## Install the SP
@@ -525,7 +531,7 @@ function Install-SqlSP
 		finally
 		{
 				## Cleanup the extracted SP
-				Remove-Item -Path "\\$computerName\C$\temp\$spName" -Recurse -Force -ErrorAction SilentlyContinue
+				Remove-Item -Path "\\$computerName\C$\windows\temp\$spName" -Recurse -Force -ErrorAction SilentlyContinue
                 
 		}
 		}
@@ -562,7 +568,7 @@ function Install-SqlCU
 
         [Parameter()]
         [validateNotNullOrEmpty()]
-        [String]$credential,
+        [pscredential]$credential,
 
         [Parameter()]
         [validateNotNullOrEmpty()]
@@ -579,7 +585,9 @@ function Install-SqlCU
 			$CUExtractPath = "C:\windows\Temp\$CUName"
       
             $targetSession = New-PSSession -ComputerName $Computername -Credential $credential
-            Copy-Item -tosession $targetSession –Path "$Installer" -Destination "$CUExtractPath" -recurse -Force -PassThru -Verbose 
+            #Copy-Item -tosession $targetSession –Path "$Installer" -Destination "$CUExtractPath" -Force -PassThru -Verbose 
+
+            Invoke-command -session $targetSession -ScriptBlock { copy-item -Path $using:Installer -Destination $using:CUExtractPath -Force -PassThru -Verbose }
             
 
             #invoke-command -ComputerName $ComputerName -Credential $credential -ScriptBlock{ Copy-Item –Path "$Using:Installer" -Destination "$using:spExtractPath" -Force -PassThru -Verbose}
@@ -607,7 +615,7 @@ function Install-SqlCU
 		finally
 		{
 				## Cleanup the extracted SP
-				Remove-Item -Path "\\$computerName\C$\temp\$CUName" -Recurse -Force -ErrorAction SilentlyContinue
+				Remove-Item -Path "\\$computerName\C$\windows\temp\$CUName" -Recurse -Force -ErrorAction SilentlyContinue
                 
 		}
 		}

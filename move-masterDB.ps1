@@ -127,8 +127,9 @@ param
 
     #Stop SQL Service, move files, start SQL
     $sqlsvc.Stop()
-    Invoke-Command -ComputerName $ComputerName -ScriptBlock{Move-Item "$OldData" "$NewData"}
-    Invoke-Command -ComputerName $ComputerName -ScriptBlock{Move-Item "$OldLog" "$NewLog"}
+    Start-Sleep -s 15 #make sure services have completely stopped before moving files.
+    Invoke-Command -ComputerName $ComputerName -ScriptBlock{Move-Item "$using:OldData" "$using:NewData"}
+    Invoke-Command -ComputerName $ComputerName -ScriptBlock{Move-Item "$using:OldLog" "$using:NewLog"}
     $sqlsvc.Start()
 
         }
