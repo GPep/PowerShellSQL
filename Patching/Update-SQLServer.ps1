@@ -16,6 +16,9 @@
 
     For now this version will only update one Server at a time but a future revision will allow for multiple server updates.
 
+    This is not cluster or AG aware so be careful that you do not run this on active (cluster) or Primary (AG) nodes. 
+    Always run on the passive or Secondary nodes first before failing over and repeating the process on the other nodes.
+
     Another future version, Adam's will allow you to install any SP or CU you want but for now this will only install the latest SPs and CUs available.
 
     ****PLEASE TEST THIS BEFORE RUNNING IT ON ONE OF YOUR PRODUCTION ENVIRONMENTS!!!!!****
@@ -70,7 +73,7 @@
         [Parameter(Mandatory=$False)]
         [ValidateNotNullOrEmpty()]
 		[string]$Source = "\\bhf-storage02\ServerTeam\ISOs Installs and Service Packs\SQL",
-        [Parameter()]
+        [Parameter(mandatory=$false)]
         [validateNotNullOrEmpty()]
         [String]$credential ="$env:USERDOMAIN\$env:UserName"
     )
@@ -121,7 +124,7 @@
         {
 
         $latestBuild = $getlatestVersion.FUllVersion.split('.')[2]
-
+        write-host $latestBuild
 
         $SPrequired = $true
 
@@ -139,13 +142,13 @@
         write-host 'SQL Server Requires Updating with'
         $spName = Find-SqlSP -SqlServerVersion $SQLVersion -source $source
 
-
         #This checks as to whether a CU needs to be installed and if so, confirms which one.
 
         IF ($getLatestversion.CumulativeUpdate -ne '')
         {
         $CuName = Find-SqlCU -SqlServerVersion $SQLVersion -source $source -ServicePack $getLatestVersion.ServicePack
         $CU = $true
+        write-host $CUName
         }
         Else
         {
@@ -170,13 +173,11 @@
 
 
         write-host "Preparing to update $ComputerName"
-        
+        write-host $SPrequired
         If ($sprequired -eq $true)
         {
         #Update SP (if required)
         $SPInstaller = "$source\$SQLVersion"+"\Updates\$spName"
-        write-host $SPInstaller
-
 
         Install-SqlSP -ComputerName $ComputerName -installer $spInstaller -spName $SPname -restart $true -credential $credential
 
@@ -185,10 +186,12 @@
         if ($cu -eq $true)
         {
 
+        write-host $CUName
+
         $CUInstaller = "$source\$SQLVersion"+"\Updates\$CUName"
 
         #Update CU (if required)
-        Install-SqlCU -ComputerName $ComputerName -installer $CUInstaller -spName $CUname -restart $true -credential $credential
+        Install-SqlCU -ComputerName $ComputerName -installer $CUInstaller -CUName $CUname -restart $true -credential $credential
 
         }
 
@@ -434,8 +437,9 @@ function Find-SqlCU
 			$CUUpdates = Get-ChildItem -Path "$source\$SQLServerVersion\Updates" -Filter "SQLServer*-$ServicePack-CU?*"
 
             $CU = $CuUpdates | Sort-Object { $_.Name } -Descending | Select-Object -First 1
+
+            return $cu.name
             
-            write-host $CU
 
 
         }
@@ -571,8 +575,8 @@ function Install-SqlCU
 		{
 
             write-host "copying CU to $computerName"
-            #extract SP to server
-			$CUExtractPath = "C:\windows\Temp\$spName"
+            #extract CU to server
+			$CUExtractPath = "C:\windows\Temp\$CUName"
       
             $targetSession = New-PSSession -ComputerName $Computername -Credential $credential
             Copy-Item -tosession $targetSession –Path "$Installer" -Destination "$CUExtractPath" -recurse -Force -PassThru -Verbose 
