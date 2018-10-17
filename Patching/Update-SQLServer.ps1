@@ -7,12 +7,16 @@
         before copying the files to the server and attempting to install them.
 	
     The main source of inspiration for this came from Adam Bertram and this blog post:
+
     https://4sysops.com/archives/update-multiple-sql-server-systems-with-powershell/
+
     My version is a lot more simple (but not quite as robust!) to Adam's although I hope to improve this over time as my PowerShell
     skills improve. 
     I have used the same premise as him with the folder structure, naming conventions and CSV reference file. 
 
     For now this version will only update one Server at a time but a future revision will allow for multiple server updates.
+
+    Another future version, Adam's will allow you to install any SP or CU you want but for now this will only install the latest SPs and CUs available.
 
     ****PLEASE TEST THIS BEFORE RUNNING IT ON ONE OF YOUR PRODUCTION ENVIRONMENTS!!!!!****
 
@@ -101,10 +105,11 @@
                 
         #Get latest SP available for this version
         $getLatestVersion = Get-LatestSqlSP -SqlServerVersion $SQLVersion -Source $source
+
         write-host "The latest version is" $getLatestVersion.fullversion
         write-host "The latest service pack is" $getlatestVersion.servicePack
 
-
+        ##Check to see if your server is up to date
         If ($CurrentVersion.split('.')[2] -eq $getlatestVersion.FUllVersion.split('.')[2] -or $CurrentVersion.split('.')[2] -gt $getlatestVersion.FUllVersion.split('.')[2] )
         {
 
@@ -120,25 +125,26 @@
 
         $SPrequired = $true
 
+        #If your server has minor security fixes and releases installed, the build versions may not match but the SP will do.
+        #Therefore this just checks to see if the SP is required.
+
         if ($build.substring(0,1) -eq $latestBuild.substring(0,1))
         {
         $SPrequired = $false
         }
 
 
-        #get installers for SP and CUs
+        #get installers for SP and CUs - This gets the  name of the installer from your 'Updates' folder.
 
         write-host 'SQL Server Requires Updating with'
         $spName = Find-SqlSP -SqlServerVersion $SQLVersion -source $source
 
 
-
+        #This checks as to whether a CU needs to be installed and if so, confirms which one.
 
         IF ($getLatestversion.CumulativeUpdate -ne '')
         {
         $CuName = Find-SqlCU -SqlServerVersion $SQLVersion -source $source -ServicePack $getLatestVersion.ServicePack
-
-        write-host $CuName
         $CU = $true
         }
         Else
@@ -214,6 +220,17 @@
 
 function Get-SQLServerVersion
 {
+
+<#
+	.SYNOPSIS
+    This function checks the current version of SQL Server running on a server
+
+    .Example
+    Get-SQLServerVersion -ComputerName 'Server1'
+
+#>
+
+
 	[CmdletBinding()]
 	param
 	(
@@ -255,6 +272,13 @@ function Get-SQLServerVersion
 function get-MajorVersion
 
 {
+
+<#
+	.SYNOPSIS
+    This takes the major build number and returns the major version year (2005, 2008, 2012 etc)
+
+#>
+
 	[CmdletBinding()]
 	param
 	(
@@ -294,6 +318,12 @@ Return $MajorVersion
 
 function Get-LatestSqlSP
 {
+
+<#
+	.SYNOPSIS
+    This checks the name of the latest SP and CUs available for your SQL Version.
+
+#>
 	[OutputType([pscustomobject])]
 	[CmdletBinding()]
 	param
@@ -326,6 +356,14 @@ function Get-LatestSqlSP
 
 function Find-SqlSP
 {
+
+<#
+	.SYNOPSIS
+    This  confirms the name of the latest SP (stored in your source Folder) that needs to be installed
+
+
+
+#>
 	[OutputType('System.IO.FileInfo')]
 	param
 	(
@@ -364,6 +402,14 @@ function Find-SqlSP
 
 function Find-SqlCU
 {
+
+<#
+	.SYNOPSIS
+    This  confirms the name of the latest CU (stored in your source Folder) that needs to be installed
+
+
+
+#>
 	[OutputType('System.IO.FileInfo')]
 	param
 	(
@@ -406,6 +452,15 @@ function Find-SqlCU
 function Install-SqlSP
 {
 
+<#
+	.SYNOPSIS
+    This  will copy the SP from the source folders to the Remote Server and then start the install. 
+    Your Server is set to restart after the install has completed.
+
+
+
+#>
+
 
 	param
 	(
@@ -443,9 +498,7 @@ function Install-SqlSP
             Copy-Item -tosession $targetSession –Path "$Installer" -Destination "$spExtractPath" -recurse -Force -PassThru -Verbose 
             
 
-            #invoke-command -ComputerName $ComputerName -Credential $credential -ScriptBlock{ Copy-Item –Path "$Using:Installer" -Destination "$using:spExtractPath" -Force -PassThru -Verbose}
-
-			## Install the SP
+            ## Install the SP
             $argumentsList = '/q /allinstances'
 			
             Invoke-Command -Session $targetsession -ScriptBlock {& cmd.exe /C "$using:SpExtractPath /q /allinstances /IAcceptSQLServerLicenseTerms"} -Verbose
@@ -477,6 +530,16 @@ function Install-SqlSP
 
 function Install-SqlCU
 {
+
+<#
+
+   	.SYNOPSIS
+    This  will copy the SP from the source folders to the Remote Server and then start the install. 
+    Your Server is set to restart after the install has completed.
+
+
+
+#>
 
 
 	param
