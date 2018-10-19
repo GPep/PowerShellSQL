@@ -77,7 +77,7 @@
 		[string]$ComputerName,
         [Parameter(Mandatory=$False)]
         [ValidateNotNullOrEmpty()]
-		[string]$Source = "\\bhf-storage02\ServerTeam\ISOs Installs and Service Packs\SQL",
+		[string]$Source = "",
         <#[Parameter(mandatory=$false)]
         [validateNotNullOrEmpty()]
         [pscredential]$credential ="$env:USERDOMAIN\$env:UserName",#>
