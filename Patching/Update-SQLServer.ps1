@@ -77,7 +77,7 @@
 		[string]$ComputerName,
         [Parameter(Mandatory=$False)]
         [ValidateNotNullOrEmpty()]
-		[string]$Source = "",
+		[string]$Source = "\\bhf-storage02\ServerTeam\ISOs Installs and Service Packs\SQL",
         <#[Parameter(mandatory=$false)]
         [validateNotNullOrEmpty()]
         [pscredential]$credential ="$env:USERDOMAIN\$env:UserName",#>
@@ -132,7 +132,7 @@
         If ($CurrentVersion.split('.')[2] -eq $getlatestVersion.FUllVersion.split('.')[2] -or $CurrentVersion.split('.')[2] -gt $getlatestVersion.FUllVersion.split('.')[2] )
         {
 
-        write-host 'Current SPs and CUs are up to date' -BackgroundColor Green -ForegroundColor white
+        write-host "Current SPs and CUs are up to date for $computerName" -BackgroundColor Green -ForegroundColor white
 
         }
 
@@ -206,7 +206,7 @@
         #Update SP (if required)
         $SPInstaller = "$source\$SQLVersion"+"\Updates\$spName"
 
-        Install-SqlSP -ComputerName $ComputerName -installer $spInstaller -spName $SPname -restart $true -credential $credential
+        Install-SqlSP -ComputerName $ComputerName -installer $spInstaller -spName $SPname -restart $true
 
         }
         
@@ -217,7 +217,7 @@
         $CUInstaller = "$source\$SQLVersion"+"\Updates\$CUName"
 
         #Update CU (if required)
-        Install-SqlCU -ComputerName $ComputerName -installer $CUInstaller -CUName $CUname -restart $true -credential $Credential
+        Install-SqlCU -ComputerName $ComputerName -installer $CUInstaller -CUName $CUname -restart $true
 
         }
 
