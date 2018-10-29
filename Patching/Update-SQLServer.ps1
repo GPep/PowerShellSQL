@@ -189,7 +189,7 @@
         $rebootFirst = Test-PendingReboot $serverName
         
         if ($rebootfirst.isrebootPending -eq $true){
-        Write-Host "$ComputerName Needs rebooting first before patches can be appied" -BackgroundColor Black -ForegroundColor red
+        Write-Host "$ComputerName Needs rebooting first before patches can be applied" -BackgroundColor Black -ForegroundColor red
         return
         }
 
