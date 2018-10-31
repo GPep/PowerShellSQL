@@ -6,11 +6,12 @@
 		
 
     .EXAMPLE
-
+    Test-SQLInstance -ComputerNmae Server1, Server2, Server3
 
 
     .PARAMETERS
-
+    -ComputerName 
+    Enter the Server/Computer names. Separate multiple names with commas.
 
 
 
@@ -18,7 +19,7 @@
 [CmdletBinding()]
 	param
 	(
-		[Parameter]
+		[Parameter(Mandatory)]
 		[ValidateNotNullOrEmpty()]
 		[string[]]$ComputerName
     )
@@ -29,22 +30,21 @@
     try
     {
     $row = NeW-Object -TypeName PsObject -Property @{'InstanceName'=$computer; "StartUpTime"=$null}
-    $Check=Invoke-Sqlcmd -ServerInstance $computer -Database TempDB -Query $SQL -ErrorAction stop -connect
-    $row.InstanceName = $Check.Name
+    $Check = Invoke-Sqlcmd -ServerInstance $computer -Database TempDB -Query $SQL -ErrorAction stop -ConnectionTimeout 200
+    $row.InstanceName = $Check.Name 
     $row.StartupTime = $check.Create_Date
+    
     }
 
     catch 
-    {
-
-    
-    
-    
+    { 
+    Write-Error -Message $_.Exception.Message
     }
     Finally
     {
 
     $return += $row 
+    $return | format-table
     }
 }
 
