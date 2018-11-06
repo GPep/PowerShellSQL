@@ -6,7 +6,6 @@ Best practice is to have the same number of tempdb files as CPUs as a start. The
 it's own dedicated drive and they should be sized to fill the drive so you don't get any performance hits when the data files have to increase the size. 
 I normally leave around 12% free so it does have a bit of space to grow if required and I don't set of any alerts that my disk space is below 10%!
 
-
 example:
 
 change-tempDB -datasize 900000KB -logsize 100000KB -FileGrowth 200MB

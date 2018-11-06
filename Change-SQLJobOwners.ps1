@@ -25,7 +25,7 @@
 
     Param(
           [Parameter(Mandatory)]
-          [string[]]$servers,
+          [string[]]$ComputerName,
           [Parameter(Mandatory=$false)]
           [ValidateLength(0,80)]
           [string]$newOwner='SA',
@@ -40,15 +40,16 @@
         try 
         {
 
+        $obj = @()
 
-        Foreach ($server in $servers)
+        Foreach ($Comp in $ComputerName)
         {
 
         $nl = [Environment]::NewLine
     
-        $srv = New-Object Microsoft.SqlServer.Management.Smo.Server($server)
+        $srv = New-Object Microsoft.SqlServer.Management.Smo.Server($Comp)
 
-        $ServerName = $server.replace('\','-')
+        $ServerName = $Comp.replace('\','-')
 
         $logFile = "C:\Temp\$serverName - ChangeJobOwners.txt"
         IF (!(Test-Path $logFile))
@@ -63,18 +64,22 @@
         foreach ($job in $srv.JobServer.Jobs)
         
         {
+
+            $jobowners = get-dbaagentJob -SQLInstance $comp | where-object {$_.OwnerLoginName -ne $NewOwner}
+            $obj = $jobowners
+
+
             if ($job.OwnerLoginName -ne $newOwner)
             {
 
                 #Check New Login exists
 
-                $ServerName = $server.replace('\','-')
+                $ServerName = $comp.replace('\','-')
 
 
                 $dbs=$srv.Logins
                 if($dbs.contains($newOwner))
                 {
-                "$newOwner found" | out-file -FilePath $logFile -append
                 $Exists = $true
                 }
 
@@ -92,7 +97,7 @@
                 
                 If ($whatif -eq $false)
                 {
-                Invoke-Sqlcmd -ServerInstance $server -query $sqlquery
+                Invoke-Sqlcmd -ServerInstance $comp -query $sqlquery
                 }
 
                 }
@@ -114,14 +119,8 @@
         finally 
         {
         
-        <#
-        foreach ($server in $servers)
-        {
-        $ServerName = $server.replace('\','-')
-        get-item "C:\Temp\$ServerName - ChangeJobOwners.txt" | where {-not(select-string -path $_.FullName -pattern "EXEC msdb.dbo.sp_update_job @job_id=")} | remove-item
+        $obj | format-table -Property Name, OwnerLoginName, sqlinstance
 
-        }
-        #>
         }
     }
 
