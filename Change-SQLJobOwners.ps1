@@ -61,15 +61,18 @@
 
             $jobowners = get-dbaagentJob -SQLInstance $comp | where-object {$_.OwnerLoginName -ne $NewOwner}
             $obj += $jobowners
-              
+
+            Foreach($job in $jobOwners)
+              {
                 $sqlquery = "---- Current owner: " + $job.OwnerLoginName + $nl + "EXEC msdb.dbo.sp_update_job @job_id=N'" + $job.JobID + "'" + $nl + ", @owner_login_name=N'$newOwner'" 
                 $sqlquery | out-file -filepath $logFile -append
+                
                 
                 If ($whatif -eq $false)
                 {
                 Invoke-Sqlcmd -ServerInstance $comp -query $sqlquery
                 }
-
+              }
         }
 
         }
