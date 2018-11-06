@@ -46,8 +46,6 @@
         {
 
         $nl = [Environment]::NewLine
-    
-        $srv = New-Object Microsoft.SqlServer.Management.Smo.Server($Comp)
 
         $ServerName = $Comp.replace('\','-')
 
@@ -61,37 +59,9 @@
         Clear-Content -Path $logFile
         }
 
-        foreach ($job in $srv.JobServer.Jobs)
-        
-        {
-
             $jobowners = get-dbaagentJob -SQLInstance $comp | where-object {$_.OwnerLoginName -ne $NewOwner}
-            $obj = $jobowners
-
-
-            if ($job.OwnerLoginName -ne $newOwner)
-            {
-
-                #Check New Login exists
-
-                $ServerName = $comp.replace('\','-')
-
-
-                $dbs=$srv.Logins
-                if($dbs.contains($newOwner))
-                {
-                $Exists = $true
-                }
-
-                else
-                {
-                "$NewOwner Not Found therefore the update will not run" | out-file -FilePath $logFile -append
-                $Exists = $false
-                
-                }
-                
-                If ($Exists -eq $true)
-                {
+            $obj += $jobowners
+              
                 $sqlquery = "---- Current owner: " + $job.OwnerLoginName + $nl + "EXEC msdb.dbo.sp_update_job @job_id=N'" + $job.JobID + "'" + $nl + ", @owner_login_name=N'$newOwner'" 
                 $sqlquery | out-file -filepath $logFile -append
                 
@@ -99,13 +69,6 @@
                 {
                 Invoke-Sqlcmd -ServerInstance $comp -query $sqlquery
                 }
-
-                }
-
-            }
-
-        }
-
 
         }
 
