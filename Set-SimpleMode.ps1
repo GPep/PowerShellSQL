@@ -72,7 +72,7 @@
     }
     If (!$databaseName)
     {
-     $DBNames = get-dbadatabase -ServerInstance $Comp | where-object {$_.name -ne 'MSDB' -and $_.recoveryModel -ne 'SIMPLE'} 
+     $DBNames = get-dbadatabase -ServerInstance $Comp | where-object {$_.recoveryModel -ne 'SIMPLE'} 
      $obj += $DBNames
       
      foreach ($DBName in $DBNames)
