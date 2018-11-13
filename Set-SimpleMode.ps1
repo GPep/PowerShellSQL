@@ -2,25 +2,23 @@
 
 <#
 	.SYNOPSIS
-    This function can change the Database owner for all Databases on a server. using the -whatif parameter simply creates a text file with the SQL script
+    This function can change the Database recovery model to 'Simple'. using the -whatif parameter simply creates a text file with the SQL script
     The script is created by default.
 		
 
     .EXAMPLE
-    set-DBOwner -ComputerName ServerName1, ServerName2 -NewOwner 'SA' 
+    set-SimpleMode -ComputerName ServerName1, ServerName2
 
-    This will change all job owners to 'SA' where the owner is set to something else. An output file is saved to C:\Temp\servername - changeJobOwners.txt if the server has a list of jobs that need the owner changed.
+    This will change all databases on a server to the simple recovery model. 
+    An output file is saved to C:\Temp\servername - SetSimpleMode.txt if the server has a list of databases that can be changed.
 
     .PARAMETERS
     -Computer
     This is the server/instance name
-    -NewOwner
-    This is the login that you wish to be the new owner
-    -NoChange
-    This parameter is used to enter another login, so if any databases use this login, the script will ignore and not update them. 
-    This is specifically if you have any databases where the owner should be something other than the main SA account.
+    -DatabaseName
+    This parameter can be used if you only want to change the recovery model of one database. By default, this is $null and will be ignored.
     -Whatif 
-    This parameter will not update the jobs. It will simply create the text file with the SQL script in it.
+    This parameter will not update the recovery model. It will simply create the text file with the SQL script in it.
 
 
 
