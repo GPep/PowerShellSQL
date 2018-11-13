@@ -86,7 +86,6 @@
         {
         
         $obj | format-table -Property Name, OwnerLoginName, sqlinstance
-
         }
     }
 

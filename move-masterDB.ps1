@@ -33,7 +33,7 @@ It would be quite simple to write another function to run both but i've left thi
 
 param
 	(
-    [Parameter(Mandatory)]
+    [Parameter(Mandatory=$false)]
 	[ValidateNotNullOrEmpty()]
 	[string]$ComputerName=$env:COMPUTERNAME, 
     [Parameter(Mandatory)]

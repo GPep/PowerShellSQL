@@ -95,6 +95,7 @@
      "SQL Jobs where owner is not $Owner :" | out-file $logFile -append
 
      $obj3 | format-table -Property Name, OwnerLoginName, sqlinstance | out-file $logfile -append
+          $obj3 | format-table -Property Name, OwnerLoginName, sqlinstance
     }
    } 
     

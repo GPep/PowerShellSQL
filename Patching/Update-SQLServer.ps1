@@ -89,6 +89,7 @@
 		try
 		{
 
+
         IF ($test -eq $true)
         {
         write-host "Checking for SPs and CUs only. No update will be completed." -BackgroundColor Yellow -ForegroundColor Red
@@ -109,56 +110,64 @@
         }
 
 
+        $Params = @{'ComputerName' = $ComputerName
+        }
+
+
         #Get Current SQL Version for instance
 
-        $CurrentVersion = Get-SQLServerVersion -ComputerName $ComputerName
-        $major = $CurrentVersion.split('.')[0]
-        $minor = $CurrentVersion.split('.')[1]
-        $build = $CurrentVersion.split('.')[2]
-        
-        $SQLversion = get-MajorVersion -version $major
 
-        if($minor -ne '00' -and $major -eq '10')
+
+        $params.CurrentVersion = Get-SQLServerVersion -ComputerName $ComputerName
+        $params.major = $params.CurrentVersion.split('.')[0]
+        $params.minor = $params.CurrentVersion.split('.')[1]
+        $params.build = $params.CurrentVersion.split('.')[2]
+        
+
+
+        $params.SQLversion = get-MajorVersion -version $params.major
+
+        if($params.minor -ne '00' -and $params.major -eq '10')
         {
-        $SQLVersion = $SQLVersion+"R2"
+        $params.SQLVersion = $params.SQLVersion+"R2"
         }
 
  
                 
         #Get latest SP available for this version
-        $getLatestVersion = Get-LatestSqlSP -SqlServerVersion $SQLVersion -Source $source
+        $getLatestVersion = Get-LatestSqlSP -SqlServerVersion $params.SQLVersion -Source $source
 
         ##Check to see if your server is up to date
-        If ($CurrentVersion.split('.')[2] -eq $getlatestVersion.FUllVersion.split('.')[2] -or $CurrentVersion.split('.')[2] -gt $getlatestVersion.FUllVersion.split('.')[2] )
+        If ($params.CurrentVersion.split('.')[2] -eq $getlatestVersion.FUllVersion.split('.')[2] -or $params.CurrentVersion.split('.')[2] -gt $getlatestVersion.FUllVersion.split('.')[2] )
         {
 
-        write-host "Current SPs and CUs are up to date for $computerName" -BackgroundColor Green -ForegroundColor white
+        write-host "Current SPs and CUs are up to date for $params.computerName" -BackgroundColor Green -ForegroundColor white
 
         }
 
         else
         {
 
-        $latestBuild = $getlatestVersion.FUllVersion.split('.')[2]
+        $params.latestBuild = $getlatestVersion.FUllVersion.split('.')[2]
 
         
 
         #If your server has minor security fixes and releases installed, the build versions may not match but the SP will do.
         #Therefore this just checks to see if the SP is required.
 
-        if ($build.substring(0,1) -eq $latestBuild.substring(0,1))
+        if ($params.build.substring(0,1) -eq $params.latestBuild.substring(0,1))
         {
-        $SPrequired = $false
+        $params.SPrequired = $false
         write-host "Service Packs are up to date" -BackgroundColor Green -ForegroundColor white
         }
         else
         {
-        $SPrequired = $true
+        $params.SPrequired = $true
         write-host "Service Packs need updating" -BackgroundColor red -ForegroundColor white
 
         }
 
-        $spName = Find-SqlSP -SqlServerVersion $SQLVersion -source $source
+        $params.spName = Find-SqlSP -SqlServerVersion $params.SQLVersion -source $source
 
         #get installers for SP and CUs - This gets the  name of the installer from your 'Updates' folder.
 
@@ -168,13 +177,13 @@
 
         IF ($getLatestversion.CumulativeUpdate -ne '')
         {
-        $CuName = Find-SqlCU -SqlServerVersion $SQLVersion -source $source -ServicePack $getLatestVersion.ServicePack
-        $CU = $true
-        write-host "Cumlative Updates Required: $CUName" -BackgroundColor red -ForegroundColor white
+        $params.CuName = Find-SqlCU -SqlServerVersion $params.SQLVersion -source $source -ServicePack $getLatestVersion.ServicePack
+        $params.CU = $true
+        write-host "Cumlative Updates Required: $params.CUName" -BackgroundColor red -ForegroundColor white
         }
         Else
         {
-        $Cu = $false
+        $params.Cu = $false
         $getLatestVersion.CumulativeUpdate = 'None'
         write-host "No CUs need to be installed" -BackgroundColor Green -ForegroundColor white
         }
@@ -184,12 +193,12 @@
 
         #strip away instance name if this is a named instance
         
-        $ServerName = $ComputerName.Split('\')[0]
+        $ServerName = $params.ComputerName.Split('\')[0]
 
-        $rebootFirst = Test-PendingReboot $serverName
+        $params.rebootFirst = Test-PendingReboot $serverName
         
-        if ($rebootfirst.isrebootPending -eq $true){
-        Write-Host "$ComputerName Needs rebooting first before patches can be applied" -BackgroundColor Black -ForegroundColor red
+        if ($params.rebootfirst.isrebootPending -eq $true){
+        Write-Host "$params.ComputerName Needs rebooting first before patches can be applied" -BackgroundColor Black -ForegroundColor red
         return
         }
 
@@ -199,14 +208,14 @@
         {
 
         
-        write-host "Preparing to update $ComputerName" -BackgroundColor Blue -ForegroundColor green
+        write-host "Preparing to update $params.ComputerName" -BackgroundColor Blue -ForegroundColor green
 
-        If ($sprequired -eq $true)
+        If ($params.sprequired -eq $true)
         {
         #Update SP (if required)
-        $SPInstaller = "$source\$SQLVersion"+"\Updates\$spName"
+        $params.SPInstaller = "$source\$SQLVersion"+"\Updates\$params.spName"
 
-        Install-SqlSP -ComputerName $ComputerName -installer $spInstaller -spName $SPname -restart $true
+        Install-SqlSP -ComputerName $params.ComputerName -installer $params.spInstaller -spName $params.SPname -restart $true
 
         }
         
@@ -214,10 +223,12 @@
         {
 
 
-        $CUInstaller = "$source\$SQLVersion"+"\Updates\$CUName"
+        $params.CUInstaller = "$source\$SQLVersion"+"\Updates\$params.CUName"
 
         #Update CU (if required)
-        Install-SqlCU -ComputerName $ComputerName -installer $CUInstaller -CUName $CUname -restart $true
+        Install-SqlCU -ComputerName $ComputerName -installer $params.CUInstaller -CUName $params.CUname -restart $true
+
+        
 
         }
 
@@ -226,6 +237,7 @@
         }
 
         }
+
 
         }
 
@@ -239,10 +251,17 @@
         Finally
 
         {
+         foreach ($computer in $params.computerName){
 
-         $obj = new-object PSObject -Property @{ ServerName=$ComputerName; CurrentVersion=$CurrentVersion;LatestVersion=$getLatestVersion.fullversion;
-         ServicePack=$getlatestVersion.servicePack; CumulativeUpdate=$getLatestVersion.CumulativeUpdate; SPRequired=$SPrequired; CURequired=$CU; 
-         RebootFirst=$rebootfirst.isrebootPending}
+         write-host $computer
+
+
+         }
+         #Create object for reporting
+         $obj = new-object PSObject -Property @{ ServerName=$params.ComputerName; CurrentVersion=$params.CurrentVersion;LatestVersion=$getLatestVersion.fullversion;
+         ServicePack=$getlatestVersion.servicePack; CumulativeUpdate=$getLatestVersion.CumulativeUpdate; SPRequired=$params.SPrequired; CURequired=$params.CU; 
+         RebootFirst=$params.rebootfirst.isrebootPending}
+
 
          $obj | format-table ServerName, CurrentVersion, LatestVersion, ServicePack, CumulativeUpdate, SPRequired, CURequired, RebootFirst
 
@@ -302,6 +321,7 @@ function Get-SQLServerVersion
             $minor = $srv.version.minor
             $build = $srv.version.build
             $version = "$Major.$minor.$build"
+            $params.currentversion = $version
             return $version
 			}
 		}

@@ -61,7 +61,7 @@
     
     $nl = [Environment]::NewLine
 
-    $srv = New-Object Microsoft.SqlServer.Management.Smo.Server($comp)
+    #$srv = New-Object Microsoft.SqlServer.Management.Smo.Server($comp)
 
     $ServerName = $comp.replace('\','-')
 
@@ -77,23 +77,17 @@
 
 
 
-     $owners = get-dbadatabase -ServerInstance $Comp | where-object {$_.owner -ne $NewOwner}
-     $obj += $owners
+     $DBowners = get-dbadatabase -ServerInstance $Comp | where-object {$_.owner -ne $NewOwner}
+     $obj += $DBowners
 
     
       
-     foreach ($db in $srv.databases)
+     foreach ($DBowner in $DBowners)
         
      {
 
 
-
-
-     if ($db.owner -ne $newOwner)
-        {
-
-
-                $sqlqry = "USE " + $db + $nl + "EXECUTE sp_changeDBOwner @loginame= '$newOwner'"
+                $sqlqry = "USE [" + $dbowner.name + "]" + $nl + "EXECUTE sp_changeDBOwner @loginame= '$newOwner'"
                 $sqlqry | out-file -filepath $logFile -append
         
                 If ($whatif -eq $false)
@@ -101,7 +95,7 @@
                 Invoke-Sqlcmd -ServerInstance $comp -query $sqlqry
                 }
 
-        }
+
      }
             
     }
@@ -123,7 +117,7 @@
        }
 
 
-    $obj  | format-table -Property Name,status,owner,recoverymodel, ComputerName
+        $obj  | format-table -Property Name,status,owner,recoverymodel, ComputerName
     }
 
     
