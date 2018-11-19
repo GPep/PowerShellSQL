@@ -1,4 +1,10 @@
-﻿Function Update-SQLServer
+﻿<#
+$Computers = "DV-SHPSRV-02", "DV-SHPSRV-03", "DV-SHPSRV-04", "ONECRMDEV12"
+foreach ($computer in $Computers) { update-sqlServer $computer}
+#>
+
+
+Function Update-SQLServer
 {
 <#
 	.SYNOPSIS
@@ -24,13 +30,13 @@
     ****PLEASE TEST THIS BEFORE RUNNING IT ON ONE OF YOUR PRODUCTION ENVIRONMENTS!!!!!****
 
 	.EXAMPLES
-		PS> Update-SQLServerk -ComputerName SERVER1 -Source '\\UNCPath\SQLInstallers\SQL' -Credential 'ServerAdmin
+		PS> Update-SQLServerk -ComputerName SERVER1 -Source '\\UNCPath\SQLInstallers\SQL'
 	
 		This example attempts to to install any updates for SERVER1 using the credential 'ServerAdmin'.
         the Source files for the SQL updates are stored in \\UNCPath\SQLInstallers\SQL
         The pre-requisites for this automated patch updates to work are the following
 
-        PS> Update-SQLServer 'BHF-FOXTROT\foxtrot' -test
+        PS> Update-SQLServer 'BHF-FOXTROT\foxtrot' -whatif
 
         This example will perform a test on the server. I.e. it will check whether new SPs or CU can be applied and whether a reboot is required.
         Adding the test Parameter means that it won't install any updates.
@@ -83,14 +89,14 @@
         [pscredential]$credential ="$env:USERDOMAIN\$env:UserName",#>
         [Parameter(Mandatory=$false)]
 		[ValidateNotNullOrEmpty()]
-		[switch]$Test
+		[switch]$WhatIf
     )
 	process {
 		try
 		{
 
 
-        IF ($test -eq $true)
+        IF ($WhatIf -eq $true)
         {
         write-host "Checking for SPs and CUs only. No update will be completed." -BackgroundColor Yellow -ForegroundColor Red
 	    }
@@ -110,64 +116,62 @@
         }
 
 
-        $Params = @{'ComputerName' = $ComputerName
-        }
 
 
         #Get Current SQL Version for instance
 
 
 
-        $params.CurrentVersion = Get-SQLServerVersion -ComputerName $ComputerName
-        $params.major = $params.CurrentVersion.split('.')[0]
-        $params.minor = $params.CurrentVersion.split('.')[1]
-        $params.build = $params.CurrentVersion.split('.')[2]
+        $CurrentVersion = Get-SQLServerVersion -ComputerName $ComputerName
+        $major = $CurrentVersion.split('.')[0]
+        $minor = $CurrentVersion.split('.')[1]
+        $build = $CurrentVersion.split('.')[2]
         
 
 
-        $params.SQLversion = get-MajorVersion -version $params.major
+        $SQLversion = get-MajorVersion -version $major
 
-        if($params.minor -ne '00' -and $params.major -eq '10')
+        if($minor -ne '00' -and $major -eq '10')
         {
-        $params.SQLVersion = $params.SQLVersion+"R2"
+        $SQLVersion = $SQLVersion+"R2"
         }
 
  
                 
         #Get latest SP available for this version
-        $getLatestVersion = Get-LatestSqlSP -SqlServerVersion $params.SQLVersion -Source $source
+        $getLatestVersion = Get-LatestSqlSP -SqlServerVersion $SQLVersion -Source $source
 
         ##Check to see if your server is up to date
-        If ($params.CurrentVersion.split('.')[2] -eq $getlatestVersion.FUllVersion.split('.')[2] -or $params.CurrentVersion.split('.')[2] -gt $getlatestVersion.FUllVersion.split('.')[2] )
+        If ($CurrentVersion.split('.')[2] -eq $getlatestVersion.FUllVersion.split('.')[2] -or $CurrentVersion.split('.')[2] -gt $getlatestVersion.FUllVersion.split('.')[2] )
         {
 
-        write-host "Current SPs and CUs are up to date for $params.computerName" -BackgroundColor Green -ForegroundColor white
+        write-host "Current SPs and CUs are up to date for $computerName" -BackgroundColor Green -ForegroundColor white
 
         }
 
         else
         {
 
-        $params.latestBuild = $getlatestVersion.FUllVersion.split('.')[2]
+        $latestBuild = $getlatestVersion.FUllVersion.split('.')[2]
 
         
 
         #If your server has minor security fixes and releases installed, the build versions may not match but the SP will do.
         #Therefore this just checks to see if the SP is required.
 
-        if ($params.build.substring(0,1) -eq $params.latestBuild.substring(0,1))
+        if ($build.substring(0,1) -eq $latestBuild.substring(0,1))
         {
-        $params.SPrequired = $false
+        $SPrequired = $false
         write-host "Service Packs are up to date" -BackgroundColor Green -ForegroundColor white
         }
         else
         {
-        $params.SPrequired = $true
+        $SPrequired = $true
         write-host "Service Packs need updating" -BackgroundColor red -ForegroundColor white
 
         }
 
-        $params.spName = Find-SqlSP -SqlServerVersion $params.SQLVersion -source $source
+        $spName = Find-SqlSP -SqlServerVersion $SQLVersion -source $source
 
         #get installers for SP and CUs - This gets the  name of the installer from your 'Updates' folder.
 
@@ -177,13 +181,13 @@
 
         IF ($getLatestversion.CumulativeUpdate -ne '')
         {
-        $params.CuName = Find-SqlCU -SqlServerVersion $params.SQLVersion -source $source -ServicePack $getLatestVersion.ServicePack
-        $params.CU = $true
-        write-host "Cumlative Updates Required: $params.CUName" -BackgroundColor red -ForegroundColor white
+        $CuName = Find-SqlCU -SqlServerVersion $SQLVersion -source $source -ServicePack $getLatestVersion.ServicePack
+        $CU = $true
+        write-host Cumlative Updates Required: $CUName -BackgroundColor red -ForegroundColor white
         }
         Else
         {
-        $params.Cu = $false
+        $Cu = $false
         $getLatestVersion.CumulativeUpdate = 'None'
         write-host "No CUs need to be installed" -BackgroundColor Green -ForegroundColor white
         }
@@ -193,40 +197,41 @@
 
         #strip away instance name if this is a named instance
         
-        $ServerName = $params.ComputerName.Split('\')[0]
+        $ServerName = $ComputerName.Split('\')[0]
 
-        $params.rebootFirst = Test-PendingReboot $serverName
+        $rebootFirst = Test-PendingReboot $serverName
         
-        if ($params.rebootfirst.isrebootPending -eq $true){
-        Write-Host "$params.ComputerName Needs rebooting first before patches can be applied" -BackgroundColor Black -ForegroundColor red
+        if ($rebootfirst.isrebootPending -eq $true){
+        Write-Host "$ComputerName Needs rebooting first before patches can be applied" -BackgroundColor Black -ForegroundColor red
         return
         }
 
         else {
 
-        IF ($test -eq $false)
+        IF ($WhatIf -eq $false)
         {
 
         
-        write-host "Preparing to update $params.ComputerName" -BackgroundColor Blue -ForegroundColor green
+        write-host "Preparing to update $ComputerName" -BackgroundColor Blue -ForegroundColor green
 
-        If ($params.sprequired -eq $true)
+        If ($sprequired -eq $true)
         {
         #Update SP (if required)
-        $params.SPInstaller = "$source\$SQLVersion"+"\Updates\$params.spName"
+        $SPInstaller = "$source\$SQLVersion"+"\Updates\$spName"
 
-        Install-SqlSP -ComputerName $params.ComputerName -installer $params.spInstaller -spName $params.SPname -restart $true
+        Install-SqlSP -ComputerName $ComputerName -installer $spInstaller -spName $SPname -restart $true
 
         }
         
         if ($cu -eq $true)
         {
 
+        write-host "updating SP!!!!"
 
-        $params.CUInstaller = "$source\$SQLVersion"+"\Updates\$params.CUName"
+        $CUInstaller = "$source\$SQLVersion"+"\Updates\$CUName"
 
         #Update CU (if required)
-        Install-SqlCU -ComputerName $ComputerName -installer $params.CUInstaller -CUName $params.CUname -restart $true
+        Install-SqlCU -ComputerName $ComputerName -installer $CUInstaller -CUName $CUname -restart $true
 
         
 
@@ -251,21 +256,16 @@
         Finally
 
         {
-         foreach ($computer in $params.computerName){
-
-         write-host $computer
-
-
-         }
+         
          #Create object for reporting
-         $obj = new-object PSObject -Property @{ ServerName=$params.ComputerName; CurrentVersion=$params.CurrentVersion;LatestVersion=$getLatestVersion.fullversion;
-         ServicePack=$getlatestVersion.servicePack; CumulativeUpdate=$getLatestVersion.CumulativeUpdate; SPRequired=$params.SPrequired; CURequired=$params.CU; 
-         RebootFirst=$params.rebootfirst.isrebootPending}
+         $obj = new-object PSObject -Property @{ ServerName=$ComputerName; CurrentVersion=$CurrentVersion;LatestVersion=$getLatestVersion.fullversion;
+         ServicePack=$getlatestVersion.servicePack; CumulativeUpdate=$getLatestVersion.CumulativeUpdate; SPRequired=$SPrequired; CURequired=$CU; 
+         RebootFirst=$rebootfirst.isrebootPending}
 
 
          $obj | format-table ServerName, CurrentVersion, LatestVersion, ServicePack, CumulativeUpdate, SPRequired, CURequired, RebootFirst
 
-         if ($test -eq $true -or $rebootfirst.isrebootPending -eq $true)
+         if ($WhatIf -eq $true -or $rebootfirst.isrebootPending -eq $true)
          {
 
          write-host "Checks completed. No updates were applied" -BackgroundColor Yellow -ForegroundColor Red
@@ -321,7 +321,7 @@ function Get-SQLServerVersion
             $minor = $srv.version.minor
             $build = $srv.version.build
             $version = "$Major.$minor.$build"
-            $params.currentversion = $version
+            $currentversion = $version
             return $version
 			}
 		}
@@ -561,7 +561,7 @@ function Install-SqlSP
 			$spExtractPath = "C:\windows\Temp\$spName"
       
             $targetSession = New-PSSession -ComputerName $Computername -Credential $credential
-            Copy-Item -Tosession $targetSession –Path "$Installer" -Destination "$spExtractPath" -Force -PassThru -Verbose 
+            Copy-Item -Tosession $targetSession –Path $Installer -Destination $spExtractPath -Force -PassThru -Verbose 
 
 
             #Invoke-command -session $targetSession -ScriptBlock { copy-item -Path $using:Installer -Destination $using:SPExtractPath -Force -PassThru -Verbose }
@@ -644,7 +644,7 @@ function Install-SqlCU
 			$CUExtractPath = "C:\windows\Temp\$CUName"
       
             $targetSession = New-PSSession -ComputerName $Computername -Credential $credential
-            Copy-Item -Tosession $targetSession –Path "$Installer" -Destination "$CUExtractPath" -Force -PassThru -Verbose 
+            Copy-Item -Tosession $targetSession –Path $Installer -Destination $CUExtractPath -Force -PassThru -Verbose 
 
             #Invoke-command -session $targetSession -ScriptBlock { copy-item -Path $using:Installer -Destination $using:CUExtractPath -Force -PassThru -Verbose }
             
