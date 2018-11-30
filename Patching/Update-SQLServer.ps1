@@ -219,19 +219,18 @@ Function Update-SQLServer
         #Update SP (if required)
         $SPInstaller = "$source\$SQLVersion"+"\Updates\$spName"
 
-        Install-SqlSP -ComputerName $ComputerName -installer $spInstaller -spName $SPname -restart $true
+        Install-SqlSP -ComputerName $ServerName -installer $spInstaller -spName $SPname -restart $true
 
         }
         
         if ($cu -eq $true)
         {
 
-        write-host "updating SP!!!!"
 
         $CUInstaller = "$source\$SQLVersion"+"\Updates\$CUName"
 
         #Update CU (if required)
-        Install-SqlCU -ComputerName $ComputerName -installer $CUInstaller -CUName $CUname -restart $true
+        Install-SqlCU -ComputerName $ServerName -installer $CUInstaller -CUName $CUname -restart $true
 
         
 

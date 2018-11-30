@@ -1,4 +1,4 @@
-﻿CD "\\bhf-storage02\ServerTeam\ISOs Installs and Service Packs\SQL\Automation\2016"
+﻿CD "\\bhf-storage02\ServerTeam\ISOs Installs and Service Packs\SQL\Automation\2014"
 
 
 ."\\bhf-storage02\ServerTeam\ISOs Installs and Service Packs\SQL\Automation\2016\Create-SQLPaths.ps1"
