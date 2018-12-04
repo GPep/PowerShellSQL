@@ -1,43 +1,5 @@
 ﻿Function Install-SQLServer
 {
-<#
-This script will install SQL Server - It currently defaults to 2016 Developer Edition but this can be amended.
-This should be run locally on the server you are installing to. 
-
-
-Example:
-This command will install SQL Server 2016 Developer Edition to a local computer using the below service accounts.
-
-Install-SQLServer -PackagePath '\\UNCPath\SQLInstalls\2016' -SQLAccount 'SVC_UT-serverName_SQL' -SQLAgent 'SVC_UT-SERVERNAME_AGT'
-
-
-Parameters:
-
--ComputerName 
-This defaults to the local computer.Even though this script should be run locally, I've put this here for future development.. Maybe.
-
--PackagePath
-Put in the patch to the packages. This would normally be a UNC Path on your network but it can be installed from a local directory on your server.
-
--PackageName
-Here is where you put the name of the package in. 
-This script as been tested  with 2012, 2014 and 2016 versions and with Standard, Enterprise and Developer editions.
-
--InstanceName
-This will default to the default instance but you can also install Named Instances.
-
--SQLAccount
-This is mandatory. Please enter the Service Account you wish to use as for SQL Services
-
--SQLAgent 
-This is mandatory. Please enter the Agent Account you wish to use for the SQL Agent
-
-****DON'T FORGET to add your SQL Service, Agent and SA account passwords in the function Start-SQLInstall****
-
-
-
-#>
-
     param (
         [Parameter(Mandatory=$false)]
         [ValidateNotNullOrEmpty()]
@@ -46,11 +8,11 @@ This is mandatory. Please enter the Agent Account you wish to use for the SQL Ag
         [Parameter(Mandatory=$false)]
         [ValidateNotNullOrEmpty()]
         [String]
-        $PackagePath="Enter Package Path Here",
+        $PackagePath="\\bhf-storage02\ServerTeam\ISOs Installs and Service Packs\SQL\2014",
         [Parameter(Mandatory=$false)]
         [ValidateNotNullOrEmpty()]
         [String]
-        $PackageName="en_sql_server_2016_developer_x64_dvd_8777069.iso",#change your package name here.
+        $PackageName="en_sql_server_2014_developer_edition_with_service_pack_1_x64_dvd_6668542.iso",
         [Parameter(Mandatory=$false)]
         [ValidateNotNullOrEmpty()]
         [String]
@@ -62,7 +24,16 @@ This is mandatory. Please enter the Agent Account you wish to use for the SQL Ag
         [Parameter(Mandatory=$True)]
         [ValidateNotNullOrEmpty()]
         [String]
-        $SQLAgent
+        $SQLAgent,
+        [Parameter(Mandatory=$True)]
+        [ValidateNotNullOrEmpty()]
+        [String]
+        $SQLPW,
+        [Parameter(Mandatory=$True)]
+        [ValidateNotNullOrEmpty()]
+        [String]
+        $AGTPW
+
     )
 
 
@@ -107,10 +78,11 @@ This is mandatory. Please enter the Agent Account you wish to use for the SQL Ag
 
         If ($IsoDrive -ne $null)
         {
-        #start-SQLInstall -ISODrive
-        Write-Host "Ready to start the install from $IsoDrive, Dave"
+        write-host $IsoDrive
+        start-SQLInstall -ISODrive $IsoDrive
         sleep -Seconds 5
         }
+
 
         }
 
@@ -234,7 +206,7 @@ Function Mount-SQLIso
         if ($setupDriveLetter -eq $null) {
                 throw "Could not mount SQL install iso"
                 }
-        Write-Verbose "Drive letter for iso is: $setupDriveLetter"
+        Write-Host "Drive letter for iso is: $setupDriveLetter"
 
         }
         Catch
@@ -264,12 +236,12 @@ Function start-SQLInstall
  	{
 		try
         {
-
+        write-host "Is this thing on?"
         # run the installer using the ini file
-        $cmd = "$IsoDrive\Setup.exe /ConfigurationFile=c:\temp\ConfigurationFile.ini /SQLSVCPASSWORD=P2ssw0rd /AGTSVCPASSWORD=P2ssw0rd /SAPWD=P2ssw0rd"
-        Write-Verbose "Running SQL Install - check %programfiles%\Microsoft SQL Server\120\Setup Bootstrap\Log\ for logs..."
+        $cmd = "$IsoDrive\Setup.exe /ConfigurationFile=c:\temp\ConfigurationFile.ini /SQLSVCPASSWORD=$SQLPW /AGTSVCPASSWORD=qtkkKq>CN[9U2FSb /SAPWD=$AGTPW"
+        Write-Host "Running SQL Install - check %programfiles%\Microsoft SQL Server\120\Setup Bootstrap\Log\ for logs..."
         Invoke-Expression $cmd | Write-Verbose
-        #>
+       
 
         }
         Catch

@@ -54,16 +54,24 @@ param
 
 
  process
-	{
+	{ 
+
+        IF (!(Get-Module -Name sqlps))
+    {
+        Write-Host 'Loading SQLPS Module' -ForegroundColor DarkYellow
+        Push-Location
+        Import-Module sqlps -DisableNameChecking
+        Pop-Location
+    }
 
     Try
         {
 
-        Invoke-SQLCMD -Query “USE [master]”
-        Invoke-SQLCMD -Query “ALTER DATABASE model MODIFY FILE (NAME = 'modeldev', FILENAME ='$newdata\model.mdf')”
-        Invoke-SQLCMD -Query “ALTER DATABASE model MODIFY FILE (NAME = 'modellog', FILENAME ='$newlog\modellog.ldf')”
-        Invoke-SQLCMD -Query “ALTER DATABASE msdb MODIFY FILE (NAME = 'MSDBData', FILENAME ='$newdata\MSDBData.mdf')”
-        Invoke-SQLCMD -Query “ALTER DATABASE msdb MODIFY FILE (NAME = 'MSDBLog', FILENAME ='$newlog\MSDBLog.ldf')”
+        Invoke-SQLCMD -Query “USE [master]” -ServerInstance $computerName
+        Invoke-SQLCMD -Query “ALTER DATABASE model MODIFY FILE (NAME = 'modeldev', FILENAME ='$newdata\model.mdf')” -ServerInstance $computerName
+        Invoke-SQLCMD -Query “ALTER DATABASE model MODIFY FILE (NAME = 'modellog', FILENAME ='$newlog\modellog.ldf')” -ServerInstance $computerName
+        Invoke-SQLCMD -Query “ALTER DATABASE msdb MODIFY FILE (NAME = 'MSDBData', FILENAME ='$newdata\MSDBData.mdf')” -ServerInstance $computerName
+        Invoke-SQLCMD -Query “ALTER DATABASE msdb MODIFY FILE (NAME = 'MSDBLog', FILENAME ='$newlog\MSDBLog.ldf')”-ServerInstance $computerName
 
         }
 
@@ -110,27 +118,43 @@ param
     Try
         {
 
-    $smowmi = New-Object Microsoft.SqlServer.Management.Smo.Wmi.ManagedComputer $ComputerName
+
+
+    #Get the Service
+
+    [void][Reflection.Assembly]::LoadWithPartialName("Microsoft.SqlServer.SMO")
+    [void][Reflection.assembly]::LoadWithPartialName("Microsoft.SqlServer.SqlWmiManagement")
+
+
+
+    $smowmi = New-Object Microsoft.SqlServer.Management.Smo.Server $sqlserver
+
+    $computer = New-Object Microsoft.SqlServer.Management.Smo.Wmi.ManagedComputer $smowmi.ComputerNamePhysicalNetBIOS
+
+
+    $sqlsvc = $computer.Services | Where-Object {$_.Name -like 'MSSQL*'}
+    $sqlagt = $Computer.Services | Where-Object {$_.Name -like 'SQLAGENT*'}
     
-    $sqlsvc = $smowmi.Services | Where-Object {$_.Name -like 'MSSQL*'}
-    $sqlagt = $smowmi.Services['SQLSERVERAGENT']
 
     #Stop SQL Service, move files, start SQL
     $sqlsvc.Stop()
     Start-Sleep -s 15 #make sure services have completely stopped before moving files.
 
-    <#
+    
     Move-Item "$olddata\msdbData.mdf" "$newdata\msdbData.mdf"
     Move-Item "$oldlog\msdblog.ldf" "$newlog\msdblog.ldf"
     Move-Item "$oldData\model.mdf" "$newdata\model.mdf"
     Move-Item "$oldlog\modellog.ldf" "$newlog\modellog.ldf"
+    
+
+    <#
+    $ServerName = $ComputerName.Split('\')[0]
+
+    Invoke-Command -ComputerName $ServerName -ScriptBlock{Move-Item "$using:olddata\msdbData.mdf" "$using:newdata\msdbData.mdf"}
+    Invoke-Command -ComputerName $ServerName -ScriptBlock{Move-Item "$using:oldlog\msdblog.ldf" "$using:newlog\msdblog.ldf"}
+    Invoke-Command -ComputerName $ServerName -ScriptBlock{Move-Item "$using:oldData\model.mdf" "$using:newdata\model.mdf"}
+    Invoke-Command -ComputerName $ServerName -ScriptBlock{Move-Item "$using:oldlog\modellog.ldf" "$using:newlog\modellog.ldf"}
     #>
-
-    Invoke-Command -ComputerName $ComputerName -ScriptBlock{Move-Item "$using:olddata\msdbData.mdf" "$using:newdata\msdbData.mdf"}
-    Invoke-Command -ComputerName $ComputerName -ScriptBlock{Move-Item "$using:oldlog\msdblog.ldf" "$using:newlog\msdblog.ldf"}
-    Invoke-Command -ComputerName $ComputerName -ScriptBlock{Move-Item "$using:oldData\model.mdf" "$using:newdata\model.mdf"}
-    Invoke-Command -ComputerName $ComputerName -ScriptBlock{Move-Item "$using:oldlog\modellog.ldf" "$using:newlog\modellog.ldf"}
-
 
     $sqlsvc.Start()
     $sqlagt.start()

@@ -68,15 +68,22 @@ param
 
         $params = @("-d$NewData","-e$NewError","-l$NewLog")
 
- 
+        $SQLServer = "$ComputerName"
 
         #Get the Service
 
-        [System.Reflection.Assembly]::LoadWithPartialName('Microsoft.SqlServer.SqlWmiManagement')| Out-Null
+        [void][Reflection.Assembly]::LoadWithPartialName("Microsoft.SqlServer.SMO")
+        [void][Reflection.assembly]::LoadWithPartialName("Microsoft.SqlServer.SqlWmiManagement")
+        $smowmi = New-Object Microsoft.SqlServer.Management.Smo.Server $sqlserver
 
-        $smowmi = New-Object Microsoft.SqlServer.Management.Smo.Wmi.ManagedComputer $ComputerName
 
-        $sqlsvc = $smowmi.Services | Where-Object {$_.Name -like 'MSSQL*'}
+        $computer = New-Object Microsoft.SqlServer.Management.Smo.Wmi.ManagedComputer $smowmi.ComputerNamePhysicalNetBIOS
+
+
+
+        $sqlsvc = $computer.Services | Where-Object {$_.Name -like 'MSSQL$*'}
+
+
 
         #Change the startup parameters
         $sqlsvc.StartupParameters = $params -join ';'
@@ -123,15 +130,31 @@ param
     Try
         {
 
-    $sqlsvc = $smowmi.Services | Where-Object {$_.Name -like 'MSSQL*'}
 
-    #Stop SQL Service, move files, start SQL
-    $sqlsvc.Stop()
-    Start-Sleep -s 15 #make sure services have completely stopped before moving files.
-    Invoke-Command -ComputerName $ComputerName -ScriptBlock{Move-Item "$using:OldData" "$using:NewData"}
-    Invoke-Command -ComputerName $ComputerName -ScriptBlock{Move-Item "$using:OldLog" "$using:NewLog"}
-    $sqlsvc.Start()
+        $SQLServer = "$ComputerName"
 
+        #Get the Service
+
+        [void][Reflection.Assembly]::LoadWithPartialName("Microsoft.SqlServer.SMO")
+        [void][Reflection.assembly]::LoadWithPartialName("Microsoft.SqlServer.SqlWmiManagement")
+        $smowmi = New-Object Microsoft.SqlServer.Management.Smo.Server $sqlserver
+
+
+        $computer = New-Object Microsoft.SqlServer.Management.Smo.Wmi.ManagedComputer $smowmi.ComputerNamePhysicalNetBIOS
+
+
+        $sqlsvc = $computer.Services | Where-Object {$_.Name -like 'MSSQL*'}
+        $sqlagt = $Computer.Services | Where-Object {$_.Name -like 'SQLAGENT*'}
+
+        #Stop SQL Service, move files, start SQL
+        $sqlsvc.Stop()
+        Start-Sleep -s 15 #make sure services have completely stopped before moving files.
+        Move-Item $OldData $NewData
+        Move-Item $OldLog $NewLog
+        #Invoke-Command -ComputerName $ComputerName -ScriptBlock{Move-Item "$using:OldData" "$using:NewData"}
+        #Invoke-Command -ComputerName $ComputerName -ScriptBlock{Move-Item "$using:OldLog" "$using:NewLog"}
+        $sqlsvc.Start()
+        $sqlagt.start()
         }
      Catch
         {

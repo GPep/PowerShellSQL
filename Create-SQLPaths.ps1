@@ -27,27 +27,29 @@
     New-Item -ItemType Directory -Force -Path F:\DBA\Logs
     New-Item -ItemType Directory -Force -Path M:\MSSQL\Logs
     New-Item -ItemType Directory -Force -Path U:\MSSQL\Data
+    New-Item -ItemType Directory -Force -Path C:\temp
 
     #Create network share for maintenance logs
 
 
-    New-SMBShare –Name “DBA” –Path “E:\DBA"
+    New-SMBShare –Name “DBA” –Path “F:\DBA"
 
-
+    Grant-SmbShareAccess -Name "DBA" -AccountName $SQLService -AccessRight Full -Confirm:$false
+    Grant-SmbShareAccess -Name "DBA" -AccountName $SQLAgent -AccessRight Full -Confirm:$false
 
 
     $DataFolders = Get-ChildItem F:\
     $LogFolders = Get-ChildItem M:\
     $TempDBFolders = Get-ChildItem U:\
 
-    $Users = @($SQLService,$SQLAgent)
+    $Users = "$SQLService","$SQLAgent"
 
     foreach ($user in $Users)
 
         {
 
 
-        Grant-SmbShareAccess -Name "DBA" -AccountName $User -AccessRight Full -Confirm:$false
+
 
         foreach ($DataFolder in $DataFolders) {
 
