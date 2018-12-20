@@ -8,7 +8,7 @@
         [Parameter(Mandatory=$false)]
         [ValidateNotNullOrEmpty()]
         [String]
-        $PackagePath="\\bhf-storage02\ServerTeam\ISOs Installs and Service Packs\SQL\2014",
+        $PackagePath="\\UNCPATH\SQLSERVER\INSTALLS\2014",
         [Parameter(Mandatory=$false)]
         [ValidateNotNullOrEmpty()]
         [String]
@@ -32,7 +32,11 @@
         [Parameter(Mandatory=$True)]
         [ValidateNotNullOrEmpty()]
         [String]
-        $AGTPW
+        $AGTPW,
+        [Parameter(Mandatory=$True)]
+        [ValidateNotNullOrEmpty()]
+        [String]
+        $SAPW
 
     )
 
@@ -236,9 +240,8 @@ Function start-SQLInstall
  	{
 		try
         {
-        write-host "Is this thing on?"
         # run the installer using the ini file
-        $cmd = "$IsoDrive\Setup.exe /ConfigurationFile=c:\temp\ConfigurationFile.ini /SQLSVCPASSWORD=$SQLPW /AGTSVCPASSWORD=qtkkKq>CN[9U2FSb /SAPWD=$AGTPW"
+        $cmd = "$IsoDrive\Setup.exe /ConfigurationFile=c:\temp\ConfigurationFile.ini /SQLSVCPASSWORD=$SQLPW /AGTSVCPASSWORD=$AGTPW /SAPWD=$SAPW"
         Write-Host "Running SQL Install - check %programfiles%\Microsoft SQL Server\120\Setup Bootstrap\Log\ for logs..."
         Invoke-Expression $cmd | Write-Verbose
        
@@ -252,5 +255,5 @@ Function start-SQLInstall
         }
         $success=$true
     }
-
+    
 }

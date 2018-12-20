@@ -8,7 +8,7 @@
     )
     
     Process
-
+    
     {
 
     $obj = @()
@@ -37,6 +37,9 @@
      
     $databases = get-dbaDBSpace -SQLServer $Comp | where-object {$_.AutoGrowth -eq '0' -or $_.AutoGrowType -eq 'pct'}
     $obj += $databases
+    $databases2 = get-dbaDBSpace -SQLServer $comp | Where-Object {$_.AutoGrowth -lt '200' -and $_.AutoGrowType -eq 'MB'}
+    $Obj += $databases2
+
    
     }
 

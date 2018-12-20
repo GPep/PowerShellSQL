@@ -36,13 +36,13 @@
 
     Grant-SmbShareAccess -Name "DBA" -AccountName $SQLService -AccessRight Full -Confirm:$false
     Grant-SmbShareAccess -Name "DBA" -AccountName $SQLAgent -AccessRight Full -Confirm:$false
-
+    Grant-SmbShareAccess -Name "DBA" -AccountName 'ROLE-Database Administrators' -AccessRight Full -Confirm:$false
 
     $DataFolders = Get-ChildItem F:\
     $LogFolders = Get-ChildItem M:\
     $TempDBFolders = Get-ChildItem U:\
 
-    $Users = "$SQLService","$SQLAgent"
+    $Users = "$SQLService","$SQLAgent","ROLE-Database Administrators"
 
     foreach ($user in $Users)
 

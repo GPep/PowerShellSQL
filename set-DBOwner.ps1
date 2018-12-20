@@ -13,7 +13,7 @@
     databases that need the owner changed.
 
     .PARAMETERS
-    -Computer
+    -ComputerName
     This is the server/instance name
     -NewOwner
     This is the login that you wish to be the new owner
@@ -76,9 +76,9 @@
     Clear-Content -Path $logFile
     }
 
+ 
 
-
-     $DBowners = get-dbadatabase -ServerInstance $Comp | where-object {$_.owner -ne $NewOwner}
+     $DBowners = get-dbadatabase -ServerInstance $Computername | where-object {$_.owner -ne $NewOwner}
      $obj += $DBowners
 
     
